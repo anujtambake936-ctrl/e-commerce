@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}{{ category.name }} | eCommerce{% endblock title %}
+{% load static %}
+{% block content %}
+
+<style>
+    .product-image-container {
+        width: 100%;
+        overflow: hidden;
+        background: #f8f9fa;
+    }
+</style>
+
+<div class="container-products">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" style="margin-bottom: 30px;">
+        <ol class="breadcrumb" style="background: none; padding: 0;">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}" style="color: #007bff; text-decoration: none;">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page" style="color: #6c757d;">{{ category.name }}</li>
+        </ol>
+    </nav>
+    
+    <h1 class="page-title">{{ category.name }}</h1>
+    
+    {% if category.description %}
+    <div class="text-center mb-4">
+        <p class="text-muted" style="font-size: 16px; color: #6c757d;">{{ category.description }}</p>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        {% for obj in products %}
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="product-card">
+                <div class="product-image-container">
+                    {% if obj.image and obj.image.url != '/media/default.png' %}
+                        <img src="{{ obj.image.url }}" alt="{{ obj.title }}" class="product-image">
+                    {% else %}
+                        <img src="https://via.placeholder.com/400x500/f8f9fa/6c757d?text={{ obj.title|truncatechars:8 }}" alt="{{ obj.title }}" class="product-image">
+                    {% endif %}
+                </div>
+                
+                <div class="product-info">
+                    <a href="{{ obj.get_absolute_url }}" class="product-title">{{ obj.title }}</a>
+                    
+                    <div class="product-price">
+                        ${{ obj.price }}
+                        {% if obj.discount_price %}
+                            <span class="product-old-price">${{ obj.discount_price }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="product-description">{{ obj.description }}</p>
+                    
+                    <div class="product-date">
+                        <i class="fas fa-calendar-alt"></i>
+                        {{ obj.timestamp|timesince }} ago
+                    </div>
+                    
+                    <form class='form-product-ajax' method='POST' action='{% url "update" %}' data-endpoint='{% url "update" %}' {% if request.user.is_authenticated %}data-user='authenticated'{% endif %}>
+                        {% csrf_token %}
+                        <input type='hidden' name='product_id' value='{{ obj.id }}' />
+                        
+                        {% if obj in cart.products.all %}
+                            <button type='submit' class='btn-remove-cart'>
+                                <i class="fa fa-times"></i> Remove from cart
+                            </button>
+                        {% else %}
+                            <button type='submit' class='btn-add-cart'>
+                                <i class="fa fa-plus"></i> Add to cart
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center">
+            <div class="alert alert-info">
+                <h4>No products found in {{ category.name }}</h4>
+                <p>Check back later for new products in this category.</p>
+                <a href="{% url 'home' %}" class="btn btn-primary">Back to Home</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block js %}
+<script>
+$(document).ready(function() {
+    // Mark forms as having a specific handler
+    $('.form-product-ajax').data('handler-attached', true);
+    
+    // Handle AJAX form submission for add/remove cart
+    $('.form-product-ajax').submit(function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        var form = $(this);
+        var url = form.attr('data-endpoint');
+        var formData = form.serialize();
+        var button = form.find('button[type="submit"]');
+        var originalText = button.html();
+        
+        // Show loading state
+        button.html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+        button.prop('disabled', true);
+        
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                // Update cart counter
+                if (typeof getCartItemLength === 'function') {
+                    getCartItemLength();
+                }
+                
+                // Toggle button state based on response
+                if (response.added === false) {
+                    button.removeClass('btn-remove-cart').addClass('btn-add-cart');
+                    button.html('<i class="fa fa-plus"></i> Add to cart');
+                } else {
+                    button.removeClass('btn-add-cart').addClass('btn-remove-cart');
+                    button.html('<i class="fa fa-times"></i> Remove from cart');
+                }
+                
+                // Update cart count if exists
+                if (response.cartItemCount !== undefined) {
+                    $('.cart-count').text(response.cartItemCount);
+                }
+            },
+            error: function(xhr, status, error) {
+                // Restore original state on error
+                button.html(originalText);
+                button.prop('disabled', false);
+                
+                // Show detailed error message
+                var errorMessage = 'Something went wrong. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMessage = xhr.responseJSON.error;
+                } else if (xhr.status === 403) {
+                    errorMessage = 'CSRF verification failed. Please refresh the page and try again.';
+                } else if (xhr.status === 404) {
+                    errorMessage = 'Product not found.';
+                }
+                alert(errorMessage);
+            },
+            complete: function() {
+                button.prop('disabled', false);
+            }
+        });
+    });
+});
+</script>
+{% endblock js %}
