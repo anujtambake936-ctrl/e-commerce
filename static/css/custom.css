@@ -51,6 +51,26 @@
     transform: scale(1.02);
 }
 
+/* Price badge and subtle details */
+.price-badge {
+    display: inline-block;
+    background: #fff;
+    border-radius: 20px;
+    padding: 6px 10px;
+    color: #27ae60;
+    font-weight: 700;
+    border: 1px solid rgba(39,174,96,0.12);
+    box-shadow: 0 4px 12px rgba(39,174,96,0.06);
+    font-size: 14px;
+}
+
+.product-card .product-info .meta {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+}
+
 .product-info {
     padding: 24px;
     flex-grow: 1;
