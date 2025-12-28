@@ -43,8 +43,30 @@ class ProductManager(models.Manager):
         return self.get_queryset().active().search(query)
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(blank=True, unique=True)
+    description = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse('category_detail', kwargs={'slug': self.slug})
+
+
+def category_pre_save_receiver(sender, instance, *args, **kwargs):
+    if not instance.slug:
+        instance.slug = unique_slug_generator(instance)
+
+pre_save.connect(category_pre_save_receiver, sender=Category)
+
+
 class Product(models.Model):
     title = models.CharField(max_length=100)
+    category = models.ForeignKey('Category', null=True, blank=True, on_delete=models.SET_NULL)
     slug = models.SlugField(blank=True, unique=True)
     brand = models.CharField(max_length=50)
     price = models.FloatField(max_length=120, null=True)
