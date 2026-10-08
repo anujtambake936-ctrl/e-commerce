@@ -2,7 +2,7 @@
 
 # Installation
 
-`git clone https://github.com/adilmohak/django-ecommerce.git`
+
 
 `pip install -r requirements.txt`
 
